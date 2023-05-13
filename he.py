@@ -2,86 +2,104 @@
 
 import os.path
 import sys
+import random
 from argparse import ArgumentParser
 from sympy import randprime
 
-def inv(a, b):
-    """
-        Finds the multiplicative inverse of `a` modulo `b`
+class HE:
+    def __init__(self):
+        """
+            Generate RSA parameters
+        """
+        N, d, e = self.setup_rsa_parameters()
+        self.N = N
+        self.d = d
+        self.e = e
 
-        Arguments:
-            a: The first number
-            b: The second number
-
-        Return:
-            u: The inverse of a modulo b i.e. a * u = 1 mod b
-    """
-    u, g, x, y = 1, a, 0, b
-    while y:
-        q, t = g // y, g % y
-        s = u - q * x
-        u, g = x, y
-        x, y = s, t
-
-    # u and v are such that a*u + b*v = g, where g = gcd(a, b)
-    # If g = 1, we may take a^-1 = u
-    return u if u > 0 else u % b
-
-def setup_rsa_parameters():
-    """
-        Generate parameters required for RSA encryption.
-        Since our inputs are 32 byte unsigned integers (256 bits), we 
-        generate primes such that their product is a number that is less
-        than 2**257
-
-        Return:
-            N: product of two primes
-            d: The private key
-            e: The public key (default is 65537)
-
-    """
-
-    p, q = randprime(2 ** 256, 2 ** 257), randprime(2 ** 256, 2 ** 257)
-    e = 65537
+    def enc(self, m):
+        """
+            Performs RSA encryption
+        """
+        return self.fast_exp(m, self.e, self.N)
     
-    # Return the appropriate parameters
-    return (p * q, inv(e, (p - 1) * (q - 1)), e)
-
-
-def fast_exp(base, exponent, modulus):
-    """
-        Function to do fast exponentiation given a base, exponent and modulus.
-        This uses the binary expansion of the exponent and repeated squaring
-        modulo the modulus
-
-        Parameters:
-            base: The base
-            exponent: The exponent
-            modulus: The modulus
-
-        Return:
-            ans: (base ** exponent) mod modulus
-    """
+    def dec(self, c):
+        """
+            Performs RSA decryption
+        """
+        return self.fast_exp(c, self.d, self.N)
     
-    current_square, num, ans = base, exponent, 1
-    while num:
-        ans = (ans * current_square) % modulus if num % 2 else ans
-        current_square = current_square ** 2 % modulus
-        num = num // 2
+    def setup_rsa_parameters(self):
+        """
+            Generate parameters required for RSA encryption.
+            Since our inputs are 32 byte unsigned integers (256 bits), we 
+            generate primes such that their product is a number that is less
+            than 2**257
 
-    return ans
+            Return:
+                N: product of two primes
+                d: The private key
+                e: The public key (default is 65537)
+
+        """
+
+        p, q = randprime(2 ** 256, 2 ** 257), randprime(2 ** 256, 2 ** 257)
+        e = 65537
+        
+        # Return the appropriate parameters
+        return (p * q, self.inv(e, (p - 1) * (q - 1)), e)
+    
+    def inv(self, a, b):
+        """
+            Finds the multiplicative inverse of `a` modulo `b`
+
+            Arguments:
+                a: The first number
+                b: The second number
+
+            Return:
+                u: The inverse of a modulo b i.e. a * u = 1 mod b
+        """
+        u, g, x, y = 1, a, 0, b
+        while y:
+            q, t = g // y, g % y
+            s = u - q * x
+            u, g = x, y
+            x, y = s, t
+
+        # u and v are such that a*u + b*v = g, where g = gcd(a, b)
+        # If g = 1, we may take a^-1 = u
+        return u if u > 0 else u % b
+    
+    def fast_exp(self, base, exponent, modulus):
+        """
+            Function to do fast exponentiation given a base, exponent and modulus.
+            This uses the binary expansion of the exponent and repeated squaring
+            modulo the modulus
+
+            Parameters:
+                base: The base
+                exponent: The exponent
+                modulus: The modulus
+
+            Return:
+                ans: (base ** exponent) mod modulus
+        """
+        
+        current_square, num, ans = base, exponent, 1
+        while num:
+            ans = (ans * current_square) % modulus if num % 2 else ans
+            current_square = current_square ** 2 % modulus
+            num = num // 2
+
+        return ans
 
 
 def main(filename):
-    # Generate RSA parameters
-    N, d, e = setup_rsa_parameters()
-    
-    # Define our encryption and decryption functions
-    encrypt = lambda m, e, N: fast_exp(m, e, N)
-    decrypt = lambda c, d, N: fast_exp(c, d, N)
+    # Create our Homomorphic Encryption object
+    he = HE()
 
-    # Function that multiplies two ciphertexts
-    fhe_multiply = lambda c1, c2, N: (c1 * c2) % N
+    # Multiplication modulo N
+    mult = lambda c1, c2, N: (c1 * c2) % N
 
     # Check if the CSV file exists
     if not os.path.isfile(filename):
@@ -96,10 +114,29 @@ def main(filename):
         for idx, line in enumerate(csv_file):
             value_dict[idx] = int(line)
 
-    # Test to see if FHE works    
-    assert(value_dict[1] == decrypt(encrypt(value_dict[1], e, N), d, N))
-    assert(value_dict[0] != decrypt(encrypt(value_dict[1], e, N), d, N))
-    assert(value_dict[1] * value_dict[1] == decrypt(fhe_multiply(encrypt(value_dict[1], e, N), encrypt(value_dict[1], e, N), N), d, N))
+    
+    # Unit tests 
+    print("Running some unit tests...")
+    
+    # Basic check to see if encryption/decryption works correctly
+    assert(value_dict[1] == he.dec(he.enc(value_dict[1])))
+    assert(value_dict[0] != he.dec(he.enc(value_dict[1])))
+    
+    # Check to see if m1*m2 = Dec(Enc(m1) * Enc(m2))
+    assert(mult(value_dict[1], value_dict[1], he.N) == he.dec(mult(he.enc(value_dict[1]), he.enc(value_dict[1]), he.N)))
+
+    # Pick 3 <= x <= n random values. Multiply them and check if: 
+    # m_0*m_1*...*m_x = Dec(Enc(m_0)*Enc(m_1)*...*Enc(m_x))
+    n = len(value_dict)
+    x = random.randint(3, n)
+    sample = random.sample(range(n), x)
+    prod, enc_prod = 1, 1
+    for idx in sample:
+        prod = mult(prod, value_dict[idx], he.N)
+        enc_prod = mult(enc_prod, he.enc(value_dict[idx]), he.N)
+
+    assert(prod == he.dec(enc_prod))
+    print("All unit tests passed!")
 
 
 if __name__ == "__main__":
