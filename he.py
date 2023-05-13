@@ -53,8 +53,8 @@ class HE:
             Finds the multiplicative inverse of `a` modulo `b`
             This algorithm is based on the Euclidean algorithm for
             finding the GCD of `a` and `b`.
-            
-            Arguments:
+
+            Parameters:
                 a: The first number
                 b: The second number
 
