@@ -32,8 +32,8 @@ class HE:
         """
             Generate parameters required for RSA encryption.
             Since our inputs are 32 byte unsigned integers (256 bits), we 
-            generate primes such that their product is a number that is less
-            than 2**257
+            generate primes such that their product is roughly of the order
+            2^512
 
             Return:
                 N: product of two primes
@@ -51,7 +51,9 @@ class HE:
     def inv(self, a, b):
         """
             Finds the multiplicative inverse of `a` modulo `b`
-
+            This algorithm is based on the Euclidean algorithm for
+            finding the GCD of `a` and `b`.
+            
             Arguments:
                 a: The first number
                 b: The second number
@@ -66,7 +68,7 @@ class HE:
             u, g = x, y
             x, y = s, t
 
-        # u and v are such that a*u + b*v = g, where g = gcd(a, b)
+        # u and v = (g - a*u)/b are such that a*u + b*v = g, where g = gcd(a, b)
         # If g = 1, we may take a^-1 = u
         return u if u > 0 else u % b
     
