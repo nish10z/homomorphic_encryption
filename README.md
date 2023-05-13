@@ -27,8 +27,8 @@ This gives us our homomorphic encryption scheme over multiplication.
 This repository implements the RSA-based scheme in Python. There are two Python scripts. The first one `he.py` takes as input a file containing up to 100 32-byte integers. It then runs a few unit tests to check if our homomorphic encryption scheme works. The repository also provides a helper script `create_csv.py` that creates a csv file with integers.
 
 
-Also included is a `Dockerfile` that provides an Ubuntu image with the required dependencies to run the two python scripts.
-In order build the Docker image please run:
+Also included is a `Dockerfile` that provides an Ubuntu image with the required dependencies to run the two Python scripts.
+In order to build the Docker image please run:
     
     $ git clone https://github.com/nish10z/homomorphic_encryption.git 
     $ cd homomorphic_encryption
